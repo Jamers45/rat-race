@@ -151,6 +151,21 @@
   }
   .cd.go{font-size:3.6rem; letter-spacing:.16em;}
   button[disabled]{opacity:.45; cursor:not-allowed;}
+  .skins{
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:2px;
+  }
+  .skins button{
+    width:34px; height:34px; margin:0; padding:0; border-radius:50%;
+    box-shadow:none; border:2px solid transparent; position:relative;
+  }
+  .skins button.on{border-color:var(--ink); transform:scale(1.1);}
+  .skins button:active{transform:scale(.94);}
+  .score{
+    margin-top:14px; font-size:1.05rem; font-weight:800;
+    font-variant-numeric:tabular-nums; color:var(--ink); letter-spacing:.04em;
+  }
+  .score .lead{color:var(--gold);}
+  #whoSeg button{padding:11px 0; font-size:.82rem;}
   @media (prefers-reduced-motion:reduce){
     .overlay{transition:none;}
   }
@@ -174,6 +189,8 @@
         <p>You're the mouse. The cheese is in the middle.<br>
         <b>Swipe anywhere</b> to run, <b>tap</b> to stop.</p>
         <input id="nameInput" maxlength="12" placeholder="Your name" aria-label="Your name">
+        <p class="lbl">Your rat</p>
+        <div class="skins" id="skinRow"></div>
         <button id="soloBtn">Play solo</button>
         <button id="raceBtn" class="quiet">Race a friend</button>
       </div>
@@ -189,11 +206,23 @@
           <button id="homeBtn1" class="quiet">Back</button>
         </div>
         <div id="hostPanel" hidden>
-          <p class="lbl">Maze size</p>
-          <div class="seg" id="sizeSeg">
-            <button data-size="0">Small</button><button data-size="1" class="on">Medium</button><button data-size="2">Big</button>
+          <div class="seg" id="kindSeg">
+            <button data-kind="match" class="on">Match</button><button data-kind="single">One race</button>
           </div>
-          <label class="chk"><input type="checkbox" id="fogChk"> Lights out</label>
+          <div id="matchOpts">
+            <p class="lbl">How many races</p>
+            <div class="seg" id="boSeg">
+              <button data-bo="0">Best of 3</button><button data-bo="1" class="on">Best of 5</button><button data-bo="2">Best of 7</button>
+            </div>
+            <p>Each race is bigger than the last, and the decider is in the dark.</p>
+          </div>
+          <div id="singleOpts" hidden>
+            <p class="lbl">Maze size</p>
+            <div class="seg" id="sizeSeg">
+              <button data-size="0">Small</button><button data-size="1" class="on">Medium</button><button data-size="2">Big</button>
+            </div>
+            <label class="chk"><input type="checkbox" id="fogChk"> Lights out</label>
+          </div>
           <p class="lbl">Your race code</p>
           <div class="code" id="codeOut">····</div>
           <p>Get them to type this in. Then you both tap Ready.</p>
@@ -212,15 +241,31 @@
     <div class="overlay" id="cdOverlay"><div class="cd" id="cdNum">3</div></div>
     <div class="overlay" id="raceEndOverlay">
       <div class="card">
-        <h2>Finished!</h2>
+        <h2 id="reHead">Finished!</h2>
         <div class="bigtime" id="reTime">0:00.0</div>
         <div class="stats">
           <span>Swipes <b id="reSwipes">0</b></span>
           <span>Best possible <b id="rePar">0</b></span>
         </div>
         <p id="reMsg">Show this to your opponent — lowest time wins.</p>
+        <div id="askWho" hidden>
+          <p class="lbl">Who won that one?</p>
+          <div class="seg" id="whoSeg">
+            <button data-who="me">I won</button><button data-who="them">They won</button>
+          </div>
+        </div>
+        <div id="scoreLine" class="score" hidden></div>
         <button id="rematchBtn">Rematch</button>
         <button id="homeBtn4" class="quiet">Menu</button>
+      </div>
+    </div>
+    <div class="overlay" id="matchOverlay">
+      <div class="card">
+        <h2 id="moHead">Match over</h2>
+        <div class="bigtime" id="moScore">3–2</div>
+        <p id="moMsg"></p>
+        <button id="newMatchBtn">New match</button>
+        <button id="homeBtn5" class="quiet">Menu</button>
       </div>
     </div>
     <div class="overlay" id="winOverlay">
@@ -256,6 +301,37 @@
   const OPP  = {up:'down', down:'up', left:'right', right:'left'};
   const FOG_LEVEL = 3;
 
+  // ---------- looks ----------
+  const THEMES = [
+    {name:'Cheddar', w1:'#e8a33d', w2:'#c97f2e', b1:'#211813', b2:'#171009', dot:'244,233,216', fog:'18,13,10'},
+    {name:'Frost',   w1:'#9fd8ef', w2:'#5f9fcf', b1:'#141e28', b2:'#0b131b', dot:'220,240,255', fog:'11,19,27'},
+    {name:'Grove',   w1:'#9ed77f', w2:'#57a34c', b1:'#152016', b2:'#0c150d', dot:'225,255,220', fog:'12,21,13'},
+    {name:'Dusk',    w1:'#f7a07d', w2:'#c9568c', b1:'#231524', b2:'#150c18', dot:'255,225,240', fog:'21,12,24'},
+    {name:'Neon',    w1:'#7af5d8', w2:'#3aa8e0', b1:'#101423', b2:'#080a14', dot:'160,255,240', fog:'8,10,20'},
+    {name:'Ember',   w1:'#f2c14e', w2:'#d1552e', b1:'#241410', b2:'#160a07', dot:'255,230,200', fog:'22,10,7'}
+  ];
+  const SKINS = [
+    {id:'classic', name:'Classic',   body:'#c9c4ce', accent:'#f2a6b8', eye:'#241a16'},
+    {id:'snow',    name:'Snowball',  body:'#f2efe9', accent:'#f7b8c6', eye:'#2a2118'},
+    {id:'ginger',  name:'Ginger',    body:'#e5a25c', accent:'#f6d2a8', eye:'#2a1a0e'},
+    {id:'mint',    name:'Mint',      body:'#9fd9be', accent:'#e6f7ee', eye:'#1c3329'},
+    {id:'sky',     name:'Sky',       body:'#8fc4e8', accent:'#dceeff', eye:'#16283a'},
+    {id:'bubble',  name:'Bubblegum', body:'#f2a6c8', accent:'#ffe0ef', eye:'#3a1628'},
+    {id:'shadow',  name:'Shadow',    body:'#7d778c', accent:'#c3b3de', eye:'#f4e9d8'},
+    {id:'champ',   name:'Champion',  body:'#ffc93c', accent:'#fff0c2', eye:'#3a2a05'}
+  ];
+  let theme = THEMES[0], skin = SKINS[0];
+  try{
+    const s = SKINS.find(k => k.id === localStorage.getItem('ratrace-skin'));
+    if(s) skin = s;
+  }catch(e){}
+
+  function applyTheme(i){
+    theme = THEMES[((i % THEMES.length) + THEMES.length) % THEMES.length];
+    canvas.style.background =
+      'radial-gradient(120% 120% at 50% 30%, ' + theme.b1 + ' 0%, ' + theme.b2 + ' 100%)';
+  }
+
   // ---------- seeded randomness ----------
   // every maze comes from a seed, so the same race code builds the identical
   // maze on every phone. integer-only maths, so it matches across devices.
@@ -269,12 +345,26 @@
   }
   let rnd = Math.random;
 
-  // race codes pack seed + size + fog, so both phones can't end up mismatched
+  // race codes pack the seed AND the format, so two phones can't end up on
+  // different settings. variant 0-5 = one-off race, 6-8 = best of 3/5/7.
   const ALPHA = '23456789ABCDEFGHJKMNPQRSTVWXYZ';   // no 0/O/1/I/L/U — kid-typeable
   const RACE_SIZES = [9, 13, 17];
   const SIZE_NAMES = ['Small','Medium','Big'];
-  function encodeCode(seed, sizeIdx, fog){
-    let v = (seed * 3 + sizeIdx) * 2 + (fog ? 1 : 0);
+  const BEST_OF = [3, 5, 7];
+  // a match climbs these rungs, so the decider is always the nastiest maze
+  const TIERS = [
+    {size: 9,  fog:false}, {size:11, fog:false}, {size:13, fog:false},
+    {size:13, fog:true},   {size:17, fog:false}, {size:17, fog:true}
+  ];
+  const isMatch = v => v >= 6;
+  const bestOfFor = v => BEST_OF[v - 6];
+  function tierForRound(round, total){
+    if(total <= 1) return 0;
+    const r = Math.min(round, total);
+    return Math.round((r-1) / (total-1) * (TIERS.length-1));
+  }
+  function encodeCode(seed, variant){
+    let v = seed * 9 + variant;
     let s = '';
     for(let i=0;i<4;i++){ s = ALPHA[v % 30] + s; v = Math.floor(v/30); }
     return s;
@@ -284,15 +374,19 @@
     if(str.length !== 4) return null;
     let v = 0;
     for(const ch of str){ const i = ALPHA.indexOf(ch); if(i < 0) return null; v = v*30 + i; }
-    const fog = v % 2; v = (v - fog) / 2;
-    const sizeIdx = v % 3; v = (v - sizeIdx) / 3;
+    const variant = v % 9; v = (v - variant) / 9;
     if(v > 65535) return null;
-    return {seed: v, sizeIdx, fog: !!fog};
+    return {seed: v, variant};
+  }
+  function describeVariant(variant){
+    return isMatch(variant)
+      ? 'Best of ' + bestOfFor(variant) + ' — mazes get harder each race'
+      : SIZE_NAMES[(variant/2)|0] + ' maze' + (variant % 2 ? ', lights out' : '');
   }
   function randomSeed(){ return Math.floor(Math.random()*65536); }
 
   let mode = 'solo';           // 'solo' | 'race'
-  let race = null;             // {seed, sizeIdx, fog, code}
+  let race = null;             // {seed, variant, round, total, match, fog, code, wins}
   let playerName = '';
   try{ playerName = localStorage.getItem('ratrace-name') || ''; }catch(e){}
 
@@ -426,23 +520,42 @@
     const size = Math.min(9 + 2*(level-1), 21);
     const parMin = 4 + (level-1);
     buildMaze(size, parMin, parMin + 6 + level, Math.random);
+    applyTheme(level - 1);
     resetRun();
     updateChip();
   }
 
-  function newRace(seed, sizeIdx, fog){
+  function newRace(seed, variant, round, wins){
     mode = 'race';
-    race = {seed, sizeIdx, fog, code: encodeCode(seed, sizeIdx, fog)};
-    const size = RACE_SIZES[sizeIdx];
-    buildMaze(size, Math.round(size*0.6), Math.round(size*1.6), mulberry32(seed + 0x9E37));
+    round = round || 1;
+    const match = isMatch(variant);
+    const total = match ? bestOfFor(variant) : 1;
+    const t = match ? TIERS[tierForRound(round, total)]
+                    : {size: RACE_SIZES[(variant/2)|0], fog: !!(variant % 2)};
+    race = {
+      seed, variant, round, total, match,
+      code: encodeCode(seed, variant),
+      fog: t.fog,
+      wins: wins || {me:0, them:0}
+    };
+    // maze seed folds in the round, so each race of a match is a new maze
+    // that both phones still derive identically
+    buildMaze(t.size, Math.round(t.size*0.6), Math.round(t.size*1.6),
+              mulberry32((seed*7919 + round*1009 + 0x9E37) >>> 0));
+    applyTheme(seed + round - 1);
     resetRun();
     updateChip();
   }
+  const clinch = () => Math.ceil(race.total / 2);
+  const matchOver = () => race.match &&
+    (race.wins.me >= clinch() || race.wins.them >= clinch());
 
   function updateChip(){
     const chip = document.getElementById('lvlChip');
     if(mode === 'race'){
-      chip.innerHTML = 'Race <b>' + race.code + '</b>';
+      chip.innerHTML = race.match
+        ? '<b>' + race.round + '</b>/' + race.total + ' · ' + race.code
+        : 'Race <b>' + race.code + '</b>';
       chip.setAttribute('aria-label', 'Race code ' + race.code);
     } else {
       chip.innerHTML = 'Lv <b id="hudLevel">' + level + '</b> ▾';
@@ -602,7 +715,7 @@
     ctx.lineCap = 'round';
     ctx.lineWidth = wallW;
     const g = ctx.createLinearGradient(0,0,0,canvas.clientHeight||canvas.height);
-    g.addColorStop(0,'#e8a33d'); g.addColorStop(1,'#c97f2e');
+    g.addColorStop(0,theme.w1); g.addColorStop(1,theme.w2);
     ctx.strokeStyle = g;
     ctx.beginPath();
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){
@@ -647,20 +760,20 @@
     ctx.save();
     ctx.translate(x,y);
     ctx.rotate(mouse.angle);
-    ctx.strokeStyle = '#f2a6b8'; ctx.lineWidth = Math.max(1.5, cell*0.06); ctx.lineCap='round';
+    ctx.strokeStyle = skin.accent; ctx.lineWidth = Math.max(1.5, cell*0.06); ctx.lineCap='round';
     ctx.beginPath();
     ctx.moveTo(-s*0.9, 0);
     ctx.quadraticCurveTo(-s*1.8, s*0.5, -s*2.1, -s*0.15);
     ctx.stroke();
-    ctx.fillStyle = '#c9c4ce';
+    ctx.fillStyle = skin.body;
     ctx.beginPath(); ctx.ellipse(0,0, s*1.05, s*0.78, 0, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.25,-s*0.72, s*0.42, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.25, s*0.72, s*0.42, 0, 7); ctx.fill();
-    ctx.fillStyle = '#f2a6b8';
+    ctx.fillStyle = skin.accent;
     ctx.beginPath(); ctx.arc(s*0.25,-s*0.72, s*0.24, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.25, s*0.72, s*0.24, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*1.05, 0, s*0.16, 0, 7); ctx.fill();
-    ctx.fillStyle = '#241a16';
+    ctx.fillStyle = skin.eye;
     ctx.beginPath(); ctx.arc(s*0.55,-s*0.28, s*0.11, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.55, s*0.28, s*0.11, 0, 7); ctx.fill();
     ctx.restore();
@@ -670,8 +783,8 @@
     const mx = cx(mouse.px), my = cy(mouse.py);
     const r1 = cell*2.4, r2 = cell*4.4;
     const g = ctx.createRadialGradient(mx,my,r1, mx,my,r2);
-    g.addColorStop(0,'rgba(18,13,10,0)');
-    g.addColorStop(1,'rgba(18,13,10,.97)');
+    g.addColorStop(0,'rgba(' + theme.fog + ',0)');
+    g.addColorStop(1,'rgba(' + theme.fog + ',.97)');
     ctx.fillStyle = g;
     const size = canvas.clientWidth;
     ctx.fillRect(0,0,size,size);
@@ -679,7 +792,7 @@
 
   // breadcrumbs of where he's already been — drawn over the fog so the dark stays navigable
   function drawExplored(){
-    ctx.fillStyle = 'rgba(242,166,184,.30)';
+    ctx.fillStyle = skin.accent + '4d';
     for(const p of explored){
       ctx.beginPath(); ctx.arc(cx(p.x), cy(p.y), cell*0.10, 0, 7); ctx.fill();
     }
@@ -745,7 +858,7 @@
     const size = canvas.clientWidth;
     ctx.clearRect(0,0,size,size);
 
-    ctx.fillStyle = 'rgba(244,233,216,.05)';
+    ctx.fillStyle = 'rgba(' + theme.dot + ',.055)';
     for(let y=0;y<H;y++) for(let x=0;x<W;x++)
       { ctx.beginPath(); ctx.arc(cx(x), cy(y), 1.2, 0, 7); ctx.fill(); }
 
@@ -807,10 +920,15 @@
     document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show'));
   }
 
-  let hostSizeIdx = 1, hostSeed = randomSeed(), cdTimer = null;
+  let hostSizeIdx = 1, hostBoIdx = 1, hostKind = 'match';
+  let hostSeed = randomSeed(), cdTimer = null, roundRecorded = false;
 
+  function hostVariant(){
+    return hostKind === 'match' ? 6 + hostBoIdx
+                                : hostSizeIdx*2 + ($('fogChk').checked ? 1 : 0);
+  }
   function refreshHostCode(){
-    $('codeOut').textContent = encodeCode(hostSeed, hostSizeIdx, $('fogChk').checked);
+    $('codeOut').textContent = encodeCode(hostSeed, hostVariant());
   }
 
   function startCountdown(){
@@ -833,6 +951,13 @@
     tick();
   }
 
+  function scoreText(){
+    const w = race.wins;
+    const me = '<span class="' + (w.me > w.them ? 'lead' : '') + '">You ' + w.me + '</span>';
+    const them = '<span class="' + (w.them > w.me ? 'lead' : '') + '">Them ' + w.them + '</span>';
+    return me + ' &nbsp;·&nbsp; ' + them;
+  }
+
   function finishRace(){
     won = true; timerOn = false;
     mouse.px = mouse.x; mouse.py = mouse.y;
@@ -840,9 +965,45 @@
     $('reTime').textContent = fmt(elapsed);
     $('reSwipes').textContent = swipes;
     $('rePar').textContent = par;
-    $('reMsg').textContent = (playerName ? playerName + ' — s' : 'S') +
-      'how this to your opponent. Lowest time wins, fewest swipes is the other prize.';
+    if(race.match){
+      $('reHead').textContent = 'Race ' + race.round + ' of ' + race.total;
+      $('reMsg').textContent = 'Compare times — lowest wins the race.';
+      $('askWho').hidden = false;
+      $('scoreLine').hidden = false;
+      $('scoreLine').innerHTML = scoreText();
+      [...$('whoSeg').children].forEach(b => b.classList.remove('on'));
+      roundRecorded = false;
+      $('rematchBtn').disabled = true;          // must record the winner first
+      $('rematchBtn').textContent = 'Next race';
+    } else {
+      $('reHead').textContent = 'Finished!';
+      $('reMsg').textContent = (playerName ? playerName + ' — s' : 'S') +
+        'how this to your opponent. Lowest time wins, fewest swipes is the other prize.';
+      $('askWho').hidden = true;
+      $('scoreLine').hidden = true;
+      $('rematchBtn').disabled = false;
+      $('rematchBtn').textContent = 'Rematch';
+    }
     setTimeout(() => show('raceEndOverlay'), reduceMotion ? 0 : 600);
+  }
+
+  function recordWinner(who){
+    if(!race.match || roundRecorded) return;
+    roundRecorded = true;
+    race.wins[who]++;
+    $('scoreLine').innerHTML = scoreText();
+    $('rematchBtn').disabled = false;
+  }
+
+  function showMatchResult(){
+    const w = race.wins, iWon = w.me > w.them;
+    hideAll();
+    $('moHead').textContent = iWon ? 'You win the match!' : 'They win the match';
+    $('moScore').textContent = w.me + '–' + w.them;
+    $('moMsg').textContent = iWon
+      ? (playerName ? playerName + ' takes it. ' : '') + 'Best of ' + race.total + ' done.'
+      : 'Best of ' + race.total + ' done. Rematch and get them back.';
+    show('matchOverlay');
   }
 
   function goHome(){
@@ -852,6 +1013,24 @@
   }
 
   // ---------- boot ----------
+  (function buildSkinRow(){
+    const row = $('skinRow');
+    SKINS.forEach(s => {
+      const b = document.createElement('button');
+      b.style.background = s.body;
+      b.style.boxShadow = 'inset -3px -4px 0 ' + s.accent + '66';
+      b.title = s.name;
+      b.setAttribute('aria-label', s.name);
+      if(s.id === skin.id) b.classList.add('on');
+      b.addEventListener('click', () => {
+        skin = s;
+        try{ localStorage.setItem('ratrace-skin', s.id); }catch(e){}
+        [...row.children].forEach(c => c.classList.toggle('on', c === b));
+      });
+      row.appendChild(b);
+    });
+  })();
+
   $('nameInput').value = playerName;
   $('nameInput').addEventListener('input', e => {
     playerName = e.target.value.trim();
@@ -872,6 +1051,20 @@
     $('racePick').hidden = true; $('hostPanel').hidden = false;
     refreshHostCode();
   });
+  $('kindSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    hostKind = b.dataset.kind;
+    [...$('kindSeg').children].forEach(c => c.classList.toggle('on', c === b));
+    $('matchOpts').hidden = hostKind !== 'match';
+    $('singleOpts').hidden = hostKind === 'match';
+    refreshHostCode();
+  });
+  $('boSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    hostBoIdx = +b.dataset.bo;
+    [...$('boSeg').children].forEach(c => c.classList.toggle('on', c === b));
+    refreshHostCode();
+  });
   $('joinBtn').addEventListener('click', () => {
     $('raceTitle').textContent = 'Join a race';
     $('racePick').hidden = true; $('joinPanel').hidden = false;
@@ -887,29 +1080,44 @@
   });
   $('fogChk').addEventListener('change', refreshHostCode);
   $('hostReady').addEventListener('click', () => {
-    newRace(hostSeed, hostSizeIdx, $('fogChk').checked);
+    newRace(hostSeed, hostVariant());
     startCountdown();
   });
   $('codeIn').addEventListener('input', e => {
     const r = decodeCode(e.target.value);
     $('joinReady').disabled = !r;
     $('joinInfo').textContent = r
-      ? SIZE_NAMES[r.sizeIdx] + ' maze' + (r.fog ? ', lights out' : '') + ' — tap Ready when they do.'
+      ? describeVariant(r.variant) + ' — tap Ready when they do.'
       : (e.target.value.length >= 4 ? "That code doesn't look right — check it again."
                                     : 'Type the 4 letters from the other phone.');
   });
   $('joinReady').addEventListener('click', () => {
     const r = decodeCode($('codeIn').value);
     if(!r) return;
-    newRace(r.seed, r.sizeIdx, r.fog);
+    newRace(r.seed, r.variant);
     startCountdown();
+  });
+  $('whoSeg').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if(!b || roundRecorded) return;
+    [...$('whoSeg').children].forEach(c => c.classList.toggle('on', c === b));
+    recordWinner(b.dataset.who);
   });
   $('rematchBtn').addEventListener('click', () => {
-    // successor seed is deterministic, so both phones get the same next maze
-    newRace((race.seed + 1) % 65536, race.sizeIdx, race.fog);
+    if(race.match){
+      if(matchOver()){ showMatchResult(); return; }
+      newRace(race.seed, race.variant, race.round + 1, race.wins);
+    } else {
+      // successor seed is deterministic, so both phones get the same next maze
+      newRace((race.seed + 1) % 65536, race.variant);
+    }
     startCountdown();
   });
-  ['homeBtn1','homeBtn2','homeBtn3','homeBtn4'].forEach(id =>
+  $('newMatchBtn').addEventListener('click', () => {
+    newRace((race.seed + 1) % 65536, race.variant, 1, {me:0, them:0});
+    startCountdown();
+  });
+  ['homeBtn1','homeBtn2','homeBtn3','homeBtn4','homeBtn5'].forEach(id =>
     $(id).addEventListener('click', goHome));
   document.querySelector('.logo').addEventListener('click', goHome);
 
@@ -928,7 +1136,10 @@
     setSpeed: v => { SPEED = v; },
     advance: (secs, dt) => { dt = dt || 1/60; for(let t=0; t<secs; t+=dt) update(dt); },
     render: () => render(performance.now(), 0),
-    encodeCode, decodeCode,
+    encodeCode, decodeCode, describeVariant, tierForRound,
+    TIERS, THEMES, SKINS,
+    theme: () => theme.name, skin: () => skin.id,
+    forceStart: () => { if(cdTimer){ clearTimeout(cdTimer); cdTimer = null; } hideAll(); started = true; },
     mazeFingerprint: () => cells.map(row =>
       row.map(c => (c.n?1:0)|(c.s?2:0)|(c.e?4:0)|(c.w?8:0)).join('')).join('|'),
     state: () => ({mouse:{x:mouse.x,y:mouse.y}, dir, desired, cheese:{...cheese},
