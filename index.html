@@ -166,6 +166,45 @@
   }
   .score .lead{color:var(--gold);}
   #whoSeg button{padding:11px 0; font-size:.82rem;}
+  .wallet{
+    margin-top:14px; font-size:1.15rem; font-weight:800; color:var(--gold);
+    font-variant-numeric:tabular-nums; letter-spacing:.04em;
+  }
+  .earned{
+    margin-top:12px; font-size:.95rem; font-weight:800; color:var(--gold);
+    font-variant-numeric:tabular-nums;
+  }
+  #storeList{
+    max-height:46vh; overflow-y:auto; overscroll-behavior:contain;
+    margin-top:12px; text-align:left; padding-right:2px;
+  }
+  .item{
+    display:flex; align-items:center; gap:10px; padding:9px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .item:last-child{border-bottom:0;}
+  .dot{
+    width:26px; height:26px; border-radius:50%; flex:0 0 auto;
+    border:2px solid transparent;
+  }
+  .item.eq .dot{border-color:var(--ink);}
+  .item .txt{flex:1 1 auto; min-width:0;}
+  .item .nm{font-size:.86rem; font-weight:800; color:var(--ink);}
+  .item .ds{font-size:.7rem; color:var(--muted); line-height:1.35;}
+  .item button{
+    margin:0; flex:0 0 auto; padding:7px 12px; font-size:.72rem;
+    border-radius:999px; box-shadow:0 3px 0 #b8860b;
+  }
+  .item button.own{
+    background:transparent; color:var(--muted); box-shadow:none;
+    border:1px solid var(--line);
+  }
+  .item .price{
+    flex:0 0 auto; font-size:.78rem; font-weight:800; color:var(--gold);
+    font-variant-numeric:tabular-nums; min-width:44px; text-align:right;
+  }
+  #storeNote{min-height:1.1em;}
+  .hud .wchip b{color:var(--gold);}
   @media (prefers-reduced-motion:reduce){
     .overlay{transition:none;}
   }
@@ -189,10 +228,11 @@
         <p>You're the mouse. The cheese is in the middle.<br>
         <b>Swipe anywhere</b> to run, <b>tap</b> to stop.</p>
         <input id="nameInput" maxlength="12" placeholder="Your name" aria-label="Your name">
-        <p class="lbl">Your rat</p>
-        <div class="skins" id="skinRow"></div>
+        <div class="wallet" id="walletHome">🧀 <b>0</b></div>
         <button id="soloBtn">Play solo</button>
-        <button id="raceBtn" class="quiet">Race a friend</button>
+        <button id="raceBtn" class="quiet">Play with friends</button>
+        <button id="survBtn" class="quiet">Survival — cat chase</button>
+        <button id="storeBtn" class="quiet">Store</button>
       </div>
     </div>
     <div class="overlay" id="raceOverlay">
@@ -259,6 +299,32 @@
         <button id="homeBtn4" class="quiet">Menu</button>
       </div>
     </div>
+    <div class="overlay" id="survEndOverlay">
+      <div class="card">
+        <h2 id="seHead">Caught!</h2>
+        <div class="bigtime" id="seScore">0</div>
+        <p class="lbl" style="margin-top:0">cheese grabbed</p>
+        <div class="stats">
+          <span>Lasted <b id="seTime">0:00.0</b></span>
+          <span>Best <b id="seBest">0</b></span>
+        </div>
+        <div class="earned" id="seEarned"></div>
+        <button id="survAgainBtn">Run again</button>
+        <button id="homeBtn6" class="quiet">Menu</button>
+      </div>
+    </div>
+    <div class="overlay" id="storeOverlay">
+      <div class="card">
+        <h2>Store</h2>
+        <div class="wallet" id="walletStore">🧀 <b>0</b></div>
+        <div class="seg" id="storeSeg">
+          <button data-tab="skins" class="on">Rats</button><button data-tab="up">Upgrades</button>
+        </div>
+        <div id="storeList"></div>
+        <p id="storeNote"></p>
+        <button id="homeBtn7" class="quiet">Back</button>
+      </div>
+    </div>
     <div class="overlay" id="matchOverlay">
       <div class="card">
         <h2 id="moHead">Match over</h2>
@@ -277,6 +343,7 @@
           <span>Par <b id="winPar">0</b></span>
           <span>Time <b id="winTime">0:00.0</b></span>
         </div>
+        <div class="earned" id="winEarned"></div>
         <button id="nextBtn">Next maze</button>
       </div>
     </div>
@@ -320,11 +387,49 @@
     {id:'shadow',  name:'Shadow',    body:'#7d778c', accent:'#c3b3de', eye:'#f4e9d8'},
     {id:'champ',   name:'Champion',  body:'#ffc93c', accent:'#fff0c2', eye:'#3a2a05'}
   ];
+  // premium rats — bought with cheese. `mark` adds a drawn feature on top of
+  // the base rat so they read as different at a glance, not just recoloured.
+  const PREMIUM = [
+    {id:'tiger',  name:'Tiger',    body:'#e8913a', accent:'#ffd9a8', eye:'#2a1505', mark:'stripes', price:120},
+    {id:'panda',  name:'Panda',    body:'#f4f1ea', accent:'#ffd3de', eye:'#1a1a1a', mark:'panda',   price:150},
+    {id:'ninja',  name:'Ninja',    body:'#5a5566', accent:'#e0435f', eye:'#ffffff', mark:'band',    price:200},
+    {id:'pirate', name:'Pirate',   body:'#b98a5e', accent:'#f0d2a8', eye:'#2a1a0a', mark:'patch',   price:240},
+    {id:'robot',  name:'Robot',    body:'#a8b4c0', accent:'#6ef0ff', eye:'#6ef0ff', mark:'antenna', price:300},
+    {id:'dragon', name:'Dragon',   body:'#7ec86a', accent:'#ffe066', eye:'#1e3a16', mark:'spikes',  price:380},
+    {id:'ghost',  name:'Ghost',    body:'#dfe6f2', accent:'#b9d4ff', eye:'#2a3550', mark:'glow',    price:450},
+    {id:'rainbow',name:'Rainbow',  body:'#ff7ab8', accent:'#fff3a8', eye:'#2a1030', mark:'rainbow', price:600}
+  ];
+  const ALL_SKINS = SKINS.concat(PREMIUM);
+
+  // passive upgrades — no new buttons to press. deliberately disabled in
+  // two-player races so cheese can never buy an unfair advantage.
+  const UPGRADES = [
+    {id:'paws',   name:'Quick Paws',   desc:'Run 20% faster in solo and survival.',            price:180, col:'#ffc93c'},
+    {id:'lantern',name:'Lantern',      desc:'See 50% further when the lights are out.',        price:220, col:'#ffe9a8'},
+    {id:'lives',  name:'Nine Lives',   desc:'Start every survival run with a spare life.',     price:260, col:'#f2a6b8'},
+    {id:'lazy',   name:'Lazy Cat',     desc:'The cat starts 20% slower.',                      price:300, col:'#c9c4ce'},
+    {id:'magnet', name:'Cheese Magnet',desc:'Grab cheese from one square away in survival.',   price:340, col:'#e8a33d'},
+    {id:'double', name:'Double Cheese',desc:'Earn twice the cheese from every run.',           price:800, col:'#ffd75e'}
+  ];
+
   let theme = THEMES[0], skin = SKINS[0];
+  let wallet = 0, owned = {}, survBest = 0;
   try{
-    const s = SKINS.find(k => k.id === localStorage.getItem('ratrace-skin'));
-    if(s) skin = s;
+    wallet = Math.max(0, parseInt(localStorage.getItem('ratrace-cheese')) || 0);
+    owned = JSON.parse(localStorage.getItem('ratrace-owned') || '{}') || {};
+    survBest = Math.max(0, parseInt(localStorage.getItem('ratrace-surv-best')) || 0);
+    const s = ALL_SKINS.find(k => k.id === localStorage.getItem('ratrace-skin'));
+    if(s && (!s.price || owned[s.id])) skin = s;
   }catch(e){}
+  const has = id => !!owned[id];
+  function saveWallet(){
+    try{
+      localStorage.setItem('ratrace-cheese', wallet);
+      localStorage.setItem('ratrace-owned', JSON.stringify(owned));
+    }catch(e){}
+  }
+  // upgrades never apply in a race — both players must be exactly even
+  const perk = id => mode !== 'race' && has(id);
 
   function applyTheme(i){
     theme = THEMES[((i % THEMES.length) + THEMES.length) % THEMES.length];
@@ -394,6 +499,7 @@
   let cells = [];            // cells[y][x] = {n,s,e,w} walls (true = wall)
   let mouse = {x:0, y:0, px:0, py:0, angle:0};
   let cheese = {x:0, y:0};
+  let cat = null, surv = null;
   let dir = null, desired = null, prog = 0, pendingStop = false;
   let won = false, started = false;
   let swipes = 0, par = 0;
@@ -516,7 +622,7 @@
 
   function newLevel(n){
     if(n) level = n;
-    mode = 'solo'; race = null;
+    mode = 'solo'; race = null; cat = null; surv = null;
     const size = Math.min(9 + 2*(level-1), 21);
     const parMin = 4 + (level-1);
     buildMaze(size, parMin, parMin + 6 + level, Math.random);
@@ -526,7 +632,7 @@
   }
 
   function newRace(seed, variant, round, wins){
-    mode = 'race';
+    mode = 'race'; cat = null; surv = null;
     round = round || 1;
     const match = isMatch(variant);
     const total = match ? bestOfFor(variant) : 1;
@@ -546,13 +652,96 @@
     resetRun();
     updateChip();
   }
+  // ---------- survival ----------
+  function bfsFrom(sx, sy){
+    const d = Array.from({length:H}, () => Array(W).fill(-1));
+    d[sy][sx] = 0;
+    const q = [[sx,sy]];
+    while(q.length){
+      const [x,y] = q.shift();
+      for(const k of ['up','down','left','right']){
+        if(!open(x,y,k)) continue;
+        const nx = x + DIRS[k][0], ny = y + DIRS[k][1];
+        if(d[ny][nx] === -1){ d[ny][nx] = d[y][x] + 1; q.push([nx,ny]); }
+      }
+    }
+    return d;
+  }
+
+  function placeCheese(){
+    // drop the next cheese somewhere far from the mouse so it's a real trip
+    const d = bfsFrom(mouse.x, mouse.y);
+    let bestD = -1, pool = [];
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      if(cat && x===cat.x && y===cat.y) continue;
+      const v = d[y][x];
+      if(v > bestD){ bestD = v; }
+    }
+    const floor = Math.max(3, Math.floor(bestD * 0.55));
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+      if(d[y][x] >= floor) pool.push([x,y]);
+    if(!pool.length) pool.push([cheese.x, cheese.y]);
+    const [nx,ny] = pool[(Math.random()*pool.length)|0];
+    cheese.x = nx; cheese.y = ny;
+  }
+
+  function newSurvival(){
+    mode = 'surv'; race = null;
+    buildMaze(15, 8, 40, Math.random);
+    applyTheme((Math.random()*THEMES.length)|0);
+    resetRun();
+    // cat starts as far away as the maze allows
+    const d = bfsFrom(0,0);
+    let far = [0,0], fd = -1;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+      if(d[y][x] > fd){ fd = d[y][x]; far = [x,y]; }
+    cat = {x:far[0], y:far[1], px:far[0], py:far[1], dir:null, prog:0,
+           angle:0, speed: perk('lazy') ? 0.40 : 0.50, grace: 2.2};
+    surv = {grabbed:0, lives: perk('lives') ? 1 : 0, over:false};
+    placeCheese();
+    updateChip();
+  }
+
+  // one step of cat pursuit: pick the neighbour that shortens the path to the mouse
+  function catStep(){
+    const d = bfsFrom(mouse.x, mouse.y);
+    let best = null, bestV = 1e9;
+    for(const k of ['up','down','left','right']){
+      if(!open(cat.x, cat.y, k)) continue;
+      const nx = cat.x + DIRS[k][0], ny = cat.y + DIRS[k][1];
+      const v = d[ny][nx];
+      if(v >= 0 && v < bestV){ bestV = v; best = k; }
+    }
+    return best;
+  }
+
+  function catCaught(){
+    if(surv.lives > 0){
+      surv.lives--;
+      // bounce the cat back to the far side rather than ending the run
+      const d = bfsFrom(mouse.x, mouse.y);
+      let far = [cat.x, cat.y], fd = -1;
+      for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+        if(d[y][x] > fd){ fd = d[y][x]; far = [x,y]; }
+      cat.x = cat.px = far[0]; cat.y = cat.py = far[1];
+      cat.dir = null; cat.prog = 0; cat.grace = 1.6;
+      if(navigator.vibrate) navigator.vibrate([40,60,40]);
+      return;
+    }
+    endSurvival();
+  }
+
   const clinch = () => Math.ceil(race.total / 2);
   const matchOver = () => race.match &&
     (race.wins.me >= clinch() || race.wins.them >= clinch());
 
   function updateChip(){
     const chip = document.getElementById('lvlChip');
-    if(mode === 'race'){
+    if(mode === 'surv'){
+      chip.innerHTML = '🧀 <b>' + surv.grabbed + '</b>' +
+        (surv.lives > 0 ? ' · ♥' + surv.lives : '');
+      chip.setAttribute('aria-label', 'Cheese grabbed ' + surv.grabbed);
+    } else if(mode === 'race'){
       chip.innerHTML = race.match
         ? '<b>' + race.round + '</b>/' + race.total + ' · ' + race.code
         : 'Race <b>' + race.code + '</b>';
@@ -585,7 +774,10 @@
     if(!timerOn){ timerOn = true; t0 = performance.now() - elapsed; }
   }
 
-  function fogOn(){ return mode === 'race' ? race.fog : level >= FOG_LEVEL; }
+  function fogOn(){
+    if(mode === 'surv') return false;          // the cat is enough of a problem
+    return mode === 'race' ? race.fog : level >= FOG_LEVEL;
+  }
 
   function markExplored(){
     const k = mouse.y*W + mouse.x;
@@ -625,7 +817,9 @@
   function arrive(){
     trail.push({x:mouse.x, y:mouse.y, life:1});
     markExplored();
-    if(mouse.x===cheese.x && mouse.y===cheese.y){
+    const reach = (mode === 'surv' && perk('magnet')) ? 1 : 0;
+    if(Math.abs(mouse.x-cheese.x) + Math.abs(mouse.y-cheese.y) <= reach){
+      if(mode === 'surv'){ grabCheese(); return; }
       dir = desired = null;
       if(mode === 'race') finishRace(); else winLevel();
       return;
@@ -754,34 +948,114 @@
     ctx.restore();
   }
 
+  function drawCat(){
+    if(!cat) return;
+    const x = cx(cat.px), y = cy(cat.py), s = cell*0.38;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(cat.angle);
+    if(cat.grace > 0){ ctx.globalAlpha = 0.45 + 0.3*Math.sin(cat.grace*12); }
+    // tail
+    ctx.strokeStyle = '#8d6b4e'; ctx.lineWidth = Math.max(2, cell*0.085); ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(-s*0.85, 0);
+    ctx.quadraticCurveTo(-s*1.9, -s*0.7, -s*1.2, -s*1.25);
+    ctx.stroke();
+    // body + head
+    ctx.fillStyle = '#a87d58';
+    ctx.beginPath(); ctx.ellipse(-s*0.15,0, s*0.95, s*0.72, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(s*0.7, 0, s*0.62, 0, 7); ctx.fill();
+    // ears
+    ctx.beginPath();
+    ctx.moveTo(s*0.45,-s*0.5); ctx.lineTo(s*0.62,-s*1.08); ctx.lineTo(s*0.95,-s*0.6); ctx.closePath(); ctx.fill();
+    ctx.moveTo(s*0.45, s*0.5); ctx.lineTo(s*0.62, s*1.08); ctx.lineTo(s*0.95, s*0.6); ctx.closePath(); ctx.fill();
+    // eyes — hungry green
+    ctx.fillStyle = '#c9f26b';
+    ctx.beginPath(); ctx.ellipse(s*0.95,-s*0.26, s*0.17, s*0.22, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s*0.95, s*0.26, s*0.17, s*0.22, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1a1208';
+    ctx.beginPath(); ctx.ellipse(s*1.02,-s*0.26, s*0.06, s*0.17, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(s*1.02, s*0.26, s*0.06, s*0.17, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+
   function drawMouse(){
     const x = cx(mouse.px), y = cy(mouse.py);
     const s = cell*0.32;
+    let body = skin.body, accent = skin.accent;
+    if(skin.mark === 'rainbow'){
+      const h = (performance.now()/14) % 360;
+      body = 'hsl(' + h + ',85%,68%)';
+      accent = 'hsl(' + ((h+40)%360) + ',95%,84%)';
+    }
     ctx.save();
     ctx.translate(x,y);
     ctx.rotate(mouse.angle);
-    ctx.strokeStyle = skin.accent; ctx.lineWidth = Math.max(1.5, cell*0.06); ctx.lineCap='round';
+    if(skin.mark === 'glow'){
+      ctx.globalAlpha = 0.82;
+      ctx.shadowColor = accent; ctx.shadowBlur = cell*0.5;
+    }
+    ctx.strokeStyle = accent; ctx.lineWidth = Math.max(1.5, cell*0.06); ctx.lineCap='round';
     ctx.beginPath();
     ctx.moveTo(-s*0.9, 0);
     ctx.quadraticCurveTo(-s*1.8, s*0.5, -s*2.1, -s*0.15);
     ctx.stroke();
-    ctx.fillStyle = skin.body;
+    ctx.fillStyle = body;
     ctx.beginPath(); ctx.ellipse(0,0, s*1.05, s*0.78, 0, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.25,-s*0.72, s*0.42, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.25, s*0.72, s*0.42, 0, 7); ctx.fill();
-    ctx.fillStyle = skin.accent;
+    if(skin.mark === 'panda'){
+      ctx.fillStyle = '#2a2a2a';
+      ctx.beginPath(); ctx.arc(s*0.25,-s*0.72, s*0.42, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.25, s*0.72, s*0.42, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(-s*0.35, 0, s*0.4, 0, 7); ctx.fill();
+    }
+    if(skin.mark === 'stripes'){
+      ctx.strokeStyle = 'rgba(60,30,8,.8)'; ctx.lineWidth = Math.max(1.5, s*0.17);
+      for(const ox2 of [-0.4, 0, 0.4]){
+        ctx.beginPath();
+        ctx.moveTo(s*ox2, -s*0.62); ctx.lineTo(s*(ox2+0.1), s*0.62);
+        ctx.stroke();
+      }
+    }
+    if(skin.mark === 'spikes'){
+      ctx.fillStyle = '#ffe066';
+      for(const ox2 of [-0.5, 0, 0.5]){
+        ctx.beginPath();
+        ctx.moveTo(s*(ox2-0.18), -s*0.6); ctx.lineTo(s*ox2, -s*1.05);
+        ctx.lineTo(s*(ox2+0.18), -s*0.6); ctx.closePath(); ctx.fill();
+      }
+    }
+    if(skin.mark === 'antenna'){
+      ctx.strokeStyle = accent; ctx.lineWidth = Math.max(1.5, s*0.12);
+      ctx.beginPath(); ctx.moveTo(-s*0.1,0); ctx.lineTo(-s*0.1,-s*1.35); ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath(); ctx.arc(-s*0.1,-s*1.45, s*0.2, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = accent;
     ctx.beginPath(); ctx.arc(s*0.25,-s*0.72, s*0.24, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.25, s*0.72, s*0.24, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*1.05, 0, s*0.16, 0, 7); ctx.fill();
+    if(skin.mark === 'band'){
+      ctx.strokeStyle = accent; ctx.lineWidth = Math.max(2, s*0.26);
+      ctx.beginPath(); ctx.moveTo(s*0.5,-s*0.8); ctx.lineTo(s*0.5, s*0.8); ctx.stroke();
+    }
     ctx.fillStyle = skin.eye;
     ctx.beginPath(); ctx.arc(s*0.55,-s*0.28, s*0.11, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(s*0.55, s*0.28, s*0.11, 0, 7); ctx.fill();
+    if(skin.mark === 'patch'){
+      ctx.fillStyle = '#1a1208';
+      ctx.beginPath(); ctx.arc(s*0.55, s*0.28, s*0.22, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#1a1208'; ctx.lineWidth = Math.max(1, s*0.09);
+      ctx.beginPath(); ctx.moveTo(s*0.3, s*0.5); ctx.lineTo(s*0.75, s*0.05); ctx.stroke();
+    }
     ctx.restore();
   }
 
   function drawFog(){
     const mx = cx(mouse.px), my = cy(mouse.py);
-    const r1 = cell*2.4, r2 = cell*4.4;
+    const boost = perk('lantern') ? 1.5 : 1;
+    const r1 = cell*2.4*boost, r2 = cell*4.4*boost;
     const g = ctx.createRadialGradient(mx,my,r1, mx,my,r2);
     g.addColorStop(0,'rgba(' + theme.fog + ',0)');
     g.addColorStop(1,'rgba(' + theme.fog + ',.97)');
@@ -826,6 +1100,9 @@
     document.getElementById('winMoves').textContent = swipes;
     document.getElementById('winPar').textContent = par;
     document.getElementById('winTime').textContent = fmt(elapsed);
+    // cheese for beating a level: more for a tidier run, more on deeper levels
+    const earned = award(stars * 8 + Math.min(level, 12) * 2);
+    document.getElementById('winEarned').innerHTML = 'Earned 🧀 <b>' + earned + '</b>';
     setTimeout(() => document.getElementById('winOverlay').classList.add('show'),
       reduceMotion ? 0 : 550);
   }
@@ -834,9 +1111,11 @@
   const raf = cb => document.hidden ? setTimeout(() => cb(performance.now()), 16)
                                     : requestAnimationFrame(cb);
 
+  const runSpeed = () => SPEED * (perk('paws') ? 1.2 : 1);
+
   // advance the mouse, handling every cell-center crossed this step
   function update(dt){
-    let dist = dir ? SPEED*dt : 0;
+    let dist = dir ? runSpeed()*dt : 0;
     while(dist > 0 && dir){
       const step = Math.min(dist, 1-prog);
       prog += step; dist -= step;
@@ -852,6 +1131,31 @@
     } else {
       mouse.px = mouse.x; mouse.py = mouse.y;
     }
+    if(mode === 'surv' && !surv.over) updateCat(dt);
+  }
+
+  function updateCat(dt){
+    if(cat.grace > 0){ cat.grace -= dt; return; }
+    let dist = cat.speed * SPEED * dt;
+    while(dist > 0){
+      if(!cat.dir){
+        cat.dir = catStep();
+        if(!cat.dir) break;
+        cat.angle = Math.atan2(DIRS[cat.dir][1], DIRS[cat.dir][0]);
+      }
+      const step = Math.min(dist, 1 - cat.prog);
+      cat.prog += step; dist -= step;
+      if(cat.prog >= 1 - 1e-9){
+        cat.x += DIRS[cat.dir][0]; cat.y += DIRS[cat.dir][1];
+        cat.prog = 0; cat.dir = null;
+      }
+    }
+    if(cat.dir){
+      cat.px = cat.x + DIRS[cat.dir][0]*cat.prog;
+      cat.py = cat.y + DIRS[cat.dir][1]*cat.prog;
+    } else { cat.px = cat.x; cat.py = cat.y; }
+    // caught if the two are within about half a square
+    if(Math.hypot(cat.px - mouse.px, cat.py - mouse.py) < 0.55) catCaught();
   }
 
   function render(now, dt){
@@ -873,9 +1177,10 @@
 
     drawWalls();
     if(!won || confetti.length) drawCheese(now);
+    drawCat();
     drawMouse();
 
-    if(fogOn() && !won){ drawFog(); drawExplored(); drawMouse(); }
+    if(fogOn() && !won){ drawFog(); drawExplored(); drawCat(); drawMouse(); }
 
     for(const c of confetti){
       c.x += c.vx; c.y += c.vy; c.vy += 0.12; c.life -= dt*1.1;
@@ -951,6 +1256,131 @@
     tick();
   }
 
+  // ---------- cheese ----------
+  function award(n){
+    const total = Math.max(0, Math.round(n * (has('double') ? 2 : 1)));
+    wallet += total; saveWallet(); paintWallet();
+    return total;
+  }
+  function paintWallet(){
+    const txt = '🧀 <b>' + wallet + '</b>';
+    $('walletHome').innerHTML = txt;
+    $('walletStore').innerHTML = txt;
+  }
+
+  function grabCheese(){
+    surv.grabbed++;
+    if(navigator.vibrate) navigator.vibrate(25);
+    burst();
+    // cat gets a little quicker with every grab
+    cat.speed = Math.min(cat.speed + 0.035, 0.95);
+    placeCheese();
+    updateChip();
+  }
+
+  function endSurvival(){
+    if(surv.over) return;
+    surv.over = true; won = true; timerOn = false;
+    dir = desired = null;
+    if(surv.grabbed > survBest){
+      survBest = surv.grabbed;
+      try{ localStorage.setItem('ratrace-surv-best', survBest); }catch(e){}
+    }
+    const earned = award(surv.grabbed * 12 + Math.floor(elapsed/1000));
+    $('seHead').textContent = surv.grabbed === 0 ? 'Caught!' : 'The cat got you';
+    $('seScore').textContent = surv.grabbed;
+    $('seTime').textContent = fmt(elapsed);
+    $('seBest').textContent = survBest;
+    $('seEarned').innerHTML = 'Earned 🧀 <b>' + earned + '</b>' +
+      (has('double') ? ' (doubled)' : '');
+    if(navigator.vibrate) navigator.vibrate([60,50,120]);
+    setTimeout(() => show('survEndOverlay'), reduceMotion ? 0 : 500);
+  }
+
+  // ---------- store ----------
+  let storeTab = 'skins';
+  function renderStore(){
+    const list = $('storeList');
+    list.innerHTML = '';
+    $('storeNote').textContent = '';
+    if(storeTab === 'skins'){
+      ALL_SKINS.forEach(s => {
+        const ownedIt = !s.price || has(s.id);
+        const row = document.createElement('div');
+        row.className = 'item' + (skin.id === s.id ? ' eq' : '');
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dot.style.background = s.mark === 'rainbow'
+          ? 'linear-gradient(135deg,#ff7ab8,#ffe066,#7af5d8)' : s.body;
+        dot.style.boxShadow = 'inset -3px -4px 0 ' + s.accent + '66';
+        const txt = document.createElement('div');
+        txt.className = 'txt';
+        txt.innerHTML = '<div class="nm">' + s.name + '</div><div class="ds">' +
+          (ownedIt ? (skin.id === s.id ? 'Wearing it' : 'Tap to wear') : 'Premium rat') + '</div>';
+        const btn = document.createElement('button');
+        if(ownedIt){
+          btn.textContent = skin.id === s.id ? 'On' : 'Wear';
+          btn.className = 'own';
+          btn.addEventListener('click', () => { equipSkin(s); });
+        } else {
+          btn.textContent = 'Buy';
+          btn.addEventListener('click', () => buy(s, true));
+        }
+        row.append(dot, txt);
+        if(!ownedIt){
+          const p = document.createElement('div');
+          p.className = 'price'; p.textContent = '🧀' + s.price;
+          row.append(p);
+        }
+        row.append(btn);
+        list.append(row);
+      });
+    } else {
+      UPGRADES.forEach(u => {
+        const ownedIt = has(u.id);
+        const row = document.createElement('div');
+        row.className = 'item';
+        const dot = document.createElement('div');
+        dot.className = 'dot'; dot.style.background = u.col;
+        const txt = document.createElement('div');
+        txt.className = 'txt';
+        txt.innerHTML = '<div class="nm">' + u.name + '</div><div class="ds">' + u.desc + '</div>';
+        const btn = document.createElement('button');
+        if(ownedIt){ btn.textContent = 'Owned'; btn.className = 'own'; btn.disabled = true; }
+        else{
+          btn.textContent = 'Buy';
+          btn.addEventListener('click', () => buy(u, false));
+          const p = document.createElement('div');
+          p.className = 'price'; p.textContent = '🧀' + u.price;
+          row.append(dot, txt, p, btn);
+          list.append(row);
+          return;
+        }
+        row.append(dot, txt, btn);
+        list.append(row);
+      });
+      $('storeNote').textContent = 'Upgrades work in solo and survival. They stay switched off in races so nobody can buy an edge.';
+    }
+  }
+  function equipSkin(s){
+    skin = s;
+    try{ localStorage.setItem('ratrace-skin', s.id); }catch(e){}
+    renderStore();
+  }
+  function buy(item, isSkin){
+    if(has(item.id)) return;
+    if(wallet < item.price){
+      $('storeNote').textContent = 'Not enough cheese — you need ' +
+        (item.price - wallet) + ' more. Survival pays the best.';
+      return;
+    }
+    wallet -= item.price;
+    owned[item.id] = true;
+    saveWallet(); paintWallet();
+    if(isSkin) equipSkin(item); else renderStore();
+    if(navigator.vibrate) navigator.vibrate(30);
+  }
+
   function scoreText(){
     const w = race.wins;
     const me = '<span class="' + (w.me > w.them ? 'lead' : '') + '">You ' + w.me + '</span>';
@@ -1013,23 +1443,25 @@
   }
 
   // ---------- boot ----------
-  (function buildSkinRow(){
-    const row = $('skinRow');
-    SKINS.forEach(s => {
-      const b = document.createElement('button');
-      b.style.background = s.body;
-      b.style.boxShadow = 'inset -3px -4px 0 ' + s.accent + '66';
-      b.title = s.name;
-      b.setAttribute('aria-label', s.name);
-      if(s.id === skin.id) b.classList.add('on');
-      b.addEventListener('click', () => {
-        skin = s;
-        try{ localStorage.setItem('ratrace-skin', s.id); }catch(e){}
-        [...row.children].forEach(c => c.classList.toggle('on', c === b));
-      });
-      row.appendChild(b);
-    });
-  })();
+  paintWallet();
+
+  $('survBtn').addEventListener('click', () => {
+    hideAll(); newSurvival(); startCountdown();
+  });
+  $('survAgainBtn').addEventListener('click', () => {
+    hideAll(); newSurvival(); startCountdown();
+  });
+  $('storeBtn').addEventListener('click', () => {
+    hideAll(); storeTab = 'skins';
+    [...$('storeSeg').children].forEach(c => c.classList.toggle('on', c.dataset.tab === 'skins'));
+    renderStore(); show('storeOverlay');
+  });
+  $('storeSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    storeTab = b.dataset.tab;
+    [...$('storeSeg').children].forEach(c => c.classList.toggle('on', c === b));
+    renderStore();
+  });
 
   $('nameInput').value = playerName;
   $('nameInput').addEventListener('input', e => {
@@ -1117,7 +1549,7 @@
     newRace((race.seed + 1) % 65536, race.variant, 1, {me:0, them:0});
     startCountdown();
   });
-  ['homeBtn1','homeBtn2','homeBtn3','homeBtn4','homeBtn5'].forEach(id =>
+  ['homeBtn1','homeBtn2','homeBtn3','homeBtn4','homeBtn5','homeBtn6','homeBtn7'].forEach(id =>
     $(id).addEventListener('click', goHome));
   document.querySelector('.logo').addEventListener('click', goHome);
 
@@ -1136,6 +1568,10 @@
     setSpeed: v => { SPEED = v; },
     advance: (secs, dt) => { dt = dt || 1/60; for(let t=0; t<secs; t+=dt) update(dt); },
     render: () => render(performance.now(), 0),
+    wallet: () => wallet, owned: () => ({...owned}), setWallet: n => { wallet = n; saveWallet(); paintWallet(); },
+    surv: () => surv && {...surv}, cat: () => cat && {...cat},
+    newSurvival, endSurvival, renderStore, runSpeed, fogOn,
+    ALL_SKINS, UPGRADES,
     encodeCode, decodeCode, describeVariant, tierForRound,
     TIERS, THEMES, SKINS,
     theme: () => theme.name, skin: () => skin.id,
