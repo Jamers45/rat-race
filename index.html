@@ -174,25 +174,35 @@
     margin-top:12px; font-size:.95rem; font-weight:800; color:var(--gold);
     font-variant-numeric:tabular-nums;
   }
+  .card.store{
+    width:94%; max-width:340px; padding:20px 16px;
+  }
   #storeList{
-    max-height:46vh; overflow-y:auto; overscroll-behavior:contain;
+    max-height:46vh; overflow-y:auto; overflow-x:hidden;
+    overscroll-behavior:contain;
     margin-top:12px; text-align:left; padding-right:2px;
   }
   .item{
-    display:flex; align-items:center; gap:10px; padding:9px 4px;
-    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:nowrap; align-items:center; gap:8px;
+    padding:9px 2px; border-bottom:1px solid var(--line);
   }
   .item:last-child{border-bottom:0;}
   .dot{
     width:26px; height:26px; border-radius:50%; flex:0 0 auto;
     border:2px solid transparent;
   }
+  .dot.em{
+    display:flex; align-items:center; justify-content:center;
+    font-size:17px; background:var(--panel-2); border-radius:8px;
+  }
   .item.eq .dot{border-color:var(--ink);}
-  .item .txt{flex:1 1 auto; min-width:0;}
-  .item .nm{font-size:.86rem; font-weight:800; color:var(--ink);}
-  .item .ds{font-size:.7rem; color:var(--muted); line-height:1.35;}
+  .item .txt{flex:1 1 auto; min-width:0; overflow:hidden;}
+  .item .nm{font-size:.84rem; font-weight:800; color:var(--ink);}
+  .item .ds{font-size:.68rem; color:var(--muted); line-height:1.3;}
+  /* item buttons must NOT inherit the card's full-width block buttons */
   .item button{
-    margin:0; flex:0 0 auto; padding:7px 12px; font-size:.72rem;
+    display:inline-block; width:auto; margin:0; flex:0 0 auto;
+    padding:7px 12px; font-size:.72rem;
     border-radius:999px; box-shadow:0 3px 0 #b8860b;
   }
   .item button.own{
@@ -200,11 +210,17 @@
     border:1px solid var(--line);
   }
   .item .price{
-    flex:0 0 auto; font-size:.78rem; font-weight:800; color:var(--gold);
-    font-variant-numeric:tabular-nums; min-width:44px; text-align:right;
+    flex:0 0 auto; font-size:.74rem; font-weight:800; color:var(--gold);
+    font-variant-numeric:tabular-nums; text-align:right;
   }
   #storeNote{min-height:1.1em;}
   .hud .wchip b{color:var(--gold);}
+  @media (max-width:360px){
+    .logo .tail{display:none;}
+    header{padding:10px 10px 6px;}
+    .hud{gap:5px;}
+    .chip, button.chip{padding:4px 8px; font-size:.68rem;}
+  }
   @media (prefers-reduced-motion:reduce){
     .overlay{transition:none;}
   }
@@ -314,7 +330,7 @@
       </div>
     </div>
     <div class="overlay" id="storeOverlay">
-      <div class="card">
+      <div class="card store">
         <h2>Store</h2>
         <div class="wallet" id="walletStore">🧀 <b>0</b></div>
         <div class="seg" id="storeSeg">
@@ -387,19 +403,32 @@
     {id:'shadow',  name:'Shadow',    body:'#7d778c', accent:'#c3b3de', eye:'#f4e9d8'},
     {id:'champ',   name:'Champion',  body:'#ffc93c', accent:'#fff0c2', eye:'#3a2a05'}
   ];
-  // premium rats — bought with cheese. `mark` adds a drawn feature on top of
-  // the base rat so they read as different at a glance, not just recoloured.
+  // premium characters — you don't recolour the rat, you become something else.
+  // each has its own drawing routine keyed by `kind`.
   const PREMIUM = [
+    {id:'dog',    name:'Dog',    kind:'dog',    emoji:'🐶', body:'#c89058', accent:'#f0d2a8', eye:'#2a1a0a', price:150,
+     desc:'A very good boy.'},
+    {id:'fish',   name:'Fish',   kind:'fish',   emoji:'🐟', body:'#58b8e8', accent:'#bfe9ff', eye:'#123048', price:300,
+     desc:'A fish. In a maze. Don’t ask.'},
+    {id:'horse',  name:'Horse',  kind:'horse',  emoji:'🐴', body:'#b5703d', accent:'#6b4423', eye:'#241408', price:500,
+     desc:'Gallops the corridors.'},
+    {id:'dragon', name:'Dragon', kind:'dragon', emoji:'🐲', body:'#4fae5c', accent:'#ffe066', eye:'#ffd75e', price:1000,
+     desc:'The rarest beast in the maze.'}
+  ];
+  // the old recoloured premium rats — no longer sold, but anyone who bought
+  // one keeps it and can still wear it
+  const LEGACY = [
     {id:'tiger',  name:'Tiger',    body:'#e8913a', accent:'#ffd9a8', eye:'#2a1505', mark:'stripes', price:120},
     {id:'panda',  name:'Panda',    body:'#f4f1ea', accent:'#ffd3de', eye:'#1a1a1a', mark:'panda',   price:150},
     {id:'ninja',  name:'Ninja',    body:'#5a5566', accent:'#e0435f', eye:'#ffffff', mark:'band',    price:200},
     {id:'pirate', name:'Pirate',   body:'#b98a5e', accent:'#f0d2a8', eye:'#2a1a0a', mark:'patch',   price:240},
     {id:'robot',  name:'Robot',    body:'#a8b4c0', accent:'#6ef0ff', eye:'#6ef0ff', mark:'antenna', price:300},
-    {id:'dragon', name:'Dragon',   body:'#7ec86a', accent:'#ffe066', eye:'#1e3a16', mark:'spikes',  price:380},
     {id:'ghost',  name:'Ghost',    body:'#dfe6f2', accent:'#b9d4ff', eye:'#2a3550', mark:'glow',    price:450},
     {id:'rainbow',name:'Rainbow',  body:'#ff7ab8', accent:'#fff3a8', eye:'#2a1030', mark:'rainbow', price:600}
   ];
-  const ALL_SKINS = SKINS.concat(PREMIUM);
+  const ALL_SKINS = SKINS.concat(PREMIUM).concat(LEGACY);
+  // what the store actually lists: free rats, characters, plus legacy only if owned
+  const catalogue = () => SKINS.concat(PREMIUM).concat(LEGACY.filter(l => has(l.id)));
 
   // passive upgrades — no new buttons to press. deliberately disabled in
   // two-player races so cheese can never buy an unfair advantage.
@@ -979,8 +1008,142 @@
     ctx.restore();
   }
 
+  // premium characters, drawn facing +x so the shared rotation works
+  const CHARACTERS = {
+    dog(s){
+      // tail — wagging up
+      ctx.strokeStyle = '#a06f38'; ctx.lineWidth = Math.max(2, s*0.22); ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-s*0.95, 0);
+      ctx.quadraticCurveTo(-s*1.5, -s*0.35, -s*1.45, -s*0.95); ctx.stroke();
+      // body + head
+      ctx.fillStyle = '#c89058';
+      ctx.beginPath(); ctx.ellipse(-s*0.15, 0, s*0.95, s*0.72, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.6, 0, s*0.6, 0, 7); ctx.fill();
+      // floppy ears, hanging out sideways
+      ctx.fillStyle = '#8a5a28';
+      ctx.beginPath(); ctx.ellipse(s*0.35, -s*0.62, s*0.42, s*0.24, -0.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(s*0.35,  s*0.62, s*0.42, s*0.24,  0.5, 0, 7); ctx.fill();
+      // snout + nose + tongue
+      ctx.fillStyle = '#e8c79a';
+      ctx.beginPath(); ctx.ellipse(s*0.95, 0, s*0.34, s*0.26, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#f2758d';
+      ctx.beginPath(); ctx.ellipse(s*1.05, s*0.18, s*0.13, s*0.2, 0.4, 0, 7); ctx.fill();
+      ctx.fillStyle = '#241408';
+      ctx.beginPath(); ctx.arc(s*1.18, 0, s*0.14, 0, 7); ctx.fill();
+      // eyes
+      ctx.beginPath(); ctx.arc(s*0.55, -s*0.26, s*0.1, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.55,  s*0.26, s*0.1, 0, 7); ctx.fill();
+    },
+    fish(s){
+      // tail fin
+      ctx.fillStyle = '#3d93c4';
+      ctx.beginPath();
+      ctx.moveTo(-s*0.7, 0); ctx.lineTo(-s*1.45, -s*0.62);
+      ctx.lineTo(-s*1.2, 0); ctx.lineTo(-s*1.45, s*0.62);
+      ctx.closePath(); ctx.fill();
+      // side fins
+      ctx.beginPath(); ctx.ellipse(0, -s*0.6, s*0.34, s*0.16, -0.6, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0,  s*0.6, s*0.34, s*0.16,  0.6, 0, 7); ctx.fill();
+      // body
+      ctx.fillStyle = '#58b8e8';
+      ctx.beginPath(); ctx.ellipse(0, 0, s*1.05, s*0.62, 0, 0, 7); ctx.fill();
+      // scale shimmer
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = Math.max(1, s*0.08);
+      ctx.beginPath(); ctx.arc(-s*0.15, 0, s*0.5, -1.1, 1.1); ctx.stroke();
+      ctx.beginPath(); ctx.arc(s*0.25, 0, s*0.45, -1.0, 1.0); ctx.stroke();
+      // lips + eyes
+      ctx.fillStyle = '#2f7ba6';
+      ctx.beginPath(); ctx.ellipse(s*1.02, 0, s*0.14, s*0.2, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#123048';
+      ctx.beginPath(); ctx.arc(s*0.6, -s*0.2, s*0.1, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.6,  s*0.2, s*0.1, 0, 7); ctx.fill();
+    },
+    horse(s){
+      // tail — flowing
+      ctx.strokeStyle = '#4f3018'; ctx.lineWidth = Math.max(2, s*0.3); ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-s*1.05, 0);
+      ctx.quadraticCurveTo(-s*1.7, s*0.25, -s*1.85, -s*0.45); ctx.stroke();
+      // body — long
+      ctx.fillStyle = '#b5703d';
+      ctx.beginPath(); ctx.ellipse(-s*0.1, 0, s*1.15, s*0.66, 0, 0, 7); ctx.fill();
+      // head + muzzle
+      ctx.beginPath(); ctx.ellipse(s*0.85, 0, s*0.5, s*0.4, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#d99a66';
+      ctx.beginPath(); ctx.ellipse(s*1.2, 0, s*0.26, s*0.3, 0, 0, 7); ctx.fill();
+      // ears
+      ctx.fillStyle = '#b5703d';
+      ctx.beginPath(); ctx.moveTo(s*0.5,-s*0.3); ctx.lineTo(s*0.62,-s*0.72); ctx.lineTo(s*0.82,-s*0.34); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(s*0.5, s*0.3); ctx.lineTo(s*0.62, s*0.72); ctx.lineTo(s*0.82, s*0.34); ctx.closePath(); ctx.fill();
+      // mane down the spine
+      ctx.fillStyle = '#6b4423';
+      for(const mx of [-0.75,-0.45,-0.15,0.15,0.45]){
+        ctx.beginPath(); ctx.ellipse(s*mx, 0, s*0.16, s*0.3, 0, 0, 7); ctx.fill();
+      }
+      // nostrils + eyes
+      ctx.fillStyle = '#241408';
+      ctx.beginPath(); ctx.arc(s*1.3, -s*0.12, s*0.05, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*1.3,  s*0.12, s*0.05, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.8, -s*0.22, s*0.09, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.8,  s*0.22, s*0.09, 0, 7); ctx.fill();
+    },
+    dragon(s){
+      const t = performance.now();
+      // wings — spread membranes
+      ctx.fillStyle = '#2e7d46';
+      for(const side of [-1,1]){
+        ctx.beginPath();
+        ctx.moveTo(-s*0.1, side*s*0.35);
+        ctx.quadraticCurveTo(-s*0.9, side*s*1.35, -s*0.05, side*s*1.2);
+        ctx.quadraticCurveTo(s*0.3, side*s*1.0, s*0.35, side*s*0.5);
+        ctx.closePath(); ctx.fill();
+      }
+      // tail with arrow tip
+      ctx.strokeStyle = '#4fae5c'; ctx.lineWidth = Math.max(2, s*0.22); ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-s*0.9, 0);
+      ctx.quadraticCurveTo(-s*1.6, s*0.3, -s*1.8, -s*0.2); ctx.stroke();
+      ctx.fillStyle = '#4fae5c';
+      ctx.beginPath(); ctx.moveTo(-s*1.95,-s*0.45); ctx.lineTo(-s*1.55,-s*0.2); ctx.lineTo(-s*1.85, s*0.0); ctx.closePath(); ctx.fill();
+      // body + head
+      ctx.beginPath(); ctx.ellipse(-s*0.05, 0, s*1.0, s*0.72, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.68, 0, s*0.55, 0, 7); ctx.fill();
+      // snout
+      ctx.beginPath(); ctx.ellipse(s*1.1, 0, s*0.3, s*0.24, 0, 0, 7); ctx.fill();
+      // horns
+      ctx.fillStyle = '#f4e9d8';
+      ctx.beginPath(); ctx.moveTo(s*0.42,-s*0.38); ctx.lineTo(s*0.1,-s*0.85); ctx.lineTo(s*0.6,-s*0.5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(s*0.42, s*0.38); ctx.lineTo(s*0.1, s*0.85); ctx.lineTo(s*0.6, s*0.5); ctx.closePath(); ctx.fill();
+      // spine spikes
+      ctx.fillStyle = '#ffe066';
+      for(const mx of [-0.7,-0.3,0.1]){
+        ctx.beginPath(); ctx.moveTo(s*(mx-0.14),0); ctx.lineTo(s*mx,-s*0.22); ctx.lineTo(s*(mx+0.14),0); ctx.closePath(); ctx.fill();
+      }
+      // eyes — gold slits
+      ctx.fillStyle = '#ffd75e';
+      ctx.beginPath(); ctx.ellipse(s*0.62,-s*0.24, s*0.13, s*0.09, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(s*0.62, s*0.24, s*0.13, s*0.09, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#1e3a16';
+      ctx.beginPath(); ctx.arc(s*0.66,-s*0.24, s*0.04, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(s*0.66, s*0.24, s*0.04, 0, 7); ctx.fill();
+      // flame breath, flickering
+      const fl = reduceMotion ? 1 : 0.8 + 0.35*Math.sin(t/90);
+      ctx.fillStyle = 'rgba(255,140,50,.85)';
+      ctx.beginPath(); ctx.ellipse(s*(1.5+0.12*fl), 0, s*0.24*fl, s*0.14, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,90,.9)';
+      ctx.beginPath(); ctx.ellipse(s*(1.44+0.1*fl), 0, s*0.13*fl, s*0.08, 0, 0, 7); ctx.fill();
+    }
+  };
+
   function drawMouse(){
     const x = cx(mouse.px), y = cy(mouse.py);
+    if(skin.kind && CHARACTERS[skin.kind]){
+      const s = cell*0.34;
+      ctx.save();
+      ctx.translate(x,y);
+      ctx.rotate(mouse.angle);
+      CHARACTERS[skin.kind](s);
+      ctx.restore();
+      return;
+    }
     const s = cell*0.32;
     let body = skin.body, accent = skin.accent;
     if(skin.mark === 'rainbow'){
@@ -1304,35 +1467,34 @@
     list.innerHTML = '';
     $('storeNote').textContent = '';
     if(storeTab === 'skins'){
-      ALL_SKINS.forEach(s => {
+      catalogue().forEach(s => {
         const ownedIt = !s.price || has(s.id);
         const row = document.createElement('div');
         row.className = 'item' + (skin.id === s.id ? ' eq' : '');
         const dot = document.createElement('div');
         dot.className = 'dot';
-        dot.style.background = s.mark === 'rainbow'
-          ? 'linear-gradient(135deg,#ff7ab8,#ffe066,#7af5d8)' : s.body;
-        dot.style.boxShadow = 'inset -3px -4px 0 ' + s.accent + '66';
+        if(s.emoji){
+          dot.classList.add('em');
+          dot.textContent = s.emoji;
+        } else {
+          dot.style.background = s.mark === 'rainbow'
+            ? 'linear-gradient(135deg,#ff7ab8,#ffe066,#7af5d8)' : s.body;
+          dot.style.boxShadow = 'inset -3px -4px 0 ' + s.accent + '66';
+        }
         const txt = document.createElement('div');
         txt.className = 'txt';
-        txt.innerHTML = '<div class="nm">' + s.name + '</div><div class="ds">' +
-          (ownedIt ? (skin.id === s.id ? 'Wearing it' : 'Tap to wear') : 'Premium rat') + '</div>';
+        txt.innerHTML = '<div class="nm">' + s.name + '</div>' +
+          (ownedIt ? '' : '<div class="ds">' + (s.desc || 'Premium rat') + '</div>');
         const btn = document.createElement('button');
         if(ownedIt){
           btn.textContent = skin.id === s.id ? 'On' : 'Wear';
           btn.className = 'own';
           btn.addEventListener('click', () => { equipSkin(s); });
         } else {
-          btn.textContent = 'Buy';
+          btn.textContent = '🧀' + s.price;   // the button IS the price tag
           btn.addEventListener('click', () => buy(s, true));
         }
-        row.append(dot, txt);
-        if(!ownedIt){
-          const p = document.createElement('div');
-          p.className = 'price'; p.textContent = '🧀' + s.price;
-          row.append(p);
-        }
-        row.append(btn);
+        row.append(dot, txt, btn);
         list.append(row);
       });
     } else {
@@ -1348,13 +1510,8 @@
         const btn = document.createElement('button');
         if(ownedIt){ btn.textContent = 'Owned'; btn.className = 'own'; btn.disabled = true; }
         else{
-          btn.textContent = 'Buy';
+          btn.textContent = '🧀' + u.price;
           btn.addEventListener('click', () => buy(u, false));
-          const p = document.createElement('div');
-          p.className = 'price'; p.textContent = '🧀' + u.price;
-          row.append(dot, txt, p, btn);
-          list.append(row);
-          return;
         }
         row.append(dot, txt, btn);
         list.append(row);
